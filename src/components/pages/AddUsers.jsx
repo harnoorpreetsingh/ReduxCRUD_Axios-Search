@@ -34,27 +34,34 @@ const AddUsers = () => {
 
   // Handle form submission
   const onSubmit = (data) => {
-    const maxId = Number(userdata?.reduce((max, user) => (user.id > max ? user.id : max), 0));
-    const newId = maxId + 1;  // Increment the highest ID by 1
+    // Validate uniqueness of email for adding new users or updating an existing user
+    const emailExists = userdata.some((user) => user.email === data.email && user.id !== userToEdit?.id);
+    if (emailExists) {
+      return alert("Email already exists!");
+    }
   
-    const newUserData = {
-      ...data,  // User data without ID
-      id: newId, // Assign the new unique ID
-    };
+    // Handle ID generation when adding a new user
+    let newUserData = { ...data };
+    if (!userToEdit) {
+      const maxId = Math.max(...userdata.map(user => parseInt(user.id, 10)), 0);
+      newUserData.id = (maxId + 1).toString(); // New ID should be max + 1 and converted to string
+    } else {
+      newUserData.id = userToEdit.id; // Keep the same ID when updating
+    }
   
-    // Now, add the new user with the unique ID to the users array
-    dispatch(addUser(newUserData)) // Assuming you're using dispatch to update the users list
-      .unwrap()
-      .then((response) => {
-        console.log("User added successfully:", response);
-        reset(); // Reset form after successful submission
-        navigate("/"); // Redirect to users page
-      })
-      .catch((error) => {
-        console.error("Error while adding user:", error);
-      });
+    // Dispatch action to add or edit user
+    if (userToEdit) {
+      // Editing an existing user
+      dispatch(editUser(newUserData));
+    } else {
+      // Adding a new user
+      dispatch(addUser(newUserData));
+    }
+  
+    // After dispatch, reset form and navigate back
+    reset();
+    navigate("/");
   };
-  
   
 
   // Navigate back to the users page without saving
@@ -70,10 +77,10 @@ const AddUsers = () => {
           <label>Name</label>
           <input
             className="border ml-4 border-black"
-            {...register("name", { required: true })}
+            {...register("name", { required: "Name is required" })}
           />
           {errors.name && (
-            <span style={{ color: "red" }}>This field is required</span>
+            <span style={{ color: "red" }}>{errors.name.message}</span>
           )}
         </div>
 
@@ -82,10 +89,16 @@ const AddUsers = () => {
           <label>Email</label>
           <input
             className="border ml-4 border-black"
-            {...register("email", { required: true, pattern: /^\S+@\S+$/i })}
+            {...register("email", { 
+              required: "Email is required", 
+              pattern: {
+                value: /^\S+@\S+$/i,
+                message: "Invalid email address"
+              }
+            })}
           />
           {errors.email && (
-            <span style={{ color: "red" }}>Invalid email address</span>
+            <span style={{ color: "red" }}>{errors.email.message}</span>
           )}
         </div>
 
@@ -95,8 +108,11 @@ const AddUsers = () => {
           <input
             type="number"
             className="border ml-4 border-black"
-            {...register("phone", { required: true })}
+            {...register("phone", { required: "Phone number is required" })}
           />
+          {errors.phone && (
+            <span style={{ color: "red" }}>{errors.phone.message}</span>
+          )}
         </div>
 
         {/* Submit Button */}
